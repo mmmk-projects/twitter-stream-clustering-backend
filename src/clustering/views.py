@@ -20,23 +20,29 @@ def get_clusters(request):
             clusters_dict[label].append(doc_coordinate)
         
         clusters = []
+        max_x, max_y = 0, 0
         for idx, label in enumerate(clusters_dict.keys()):
             size = len(clusters_dict[label])
             x_list = [doc_coordinate[0] for doc_coordinate in clusters_dict[label]]
             y_list = [doc_coordinate[1] for doc_coordinate in clusters_dict[label]]
             x = sum(x_list) / len(x_list)
             y = sum(y_list) / len(y_list)
+            if abs(x) > max_x:
+                max_x = abs(x)
+            if abs(y) > max_y:
+                max_y = abs(y)
             clusters.append({
-                'id': int(label + 1),
                 'hashtag': int(label + 1),
                 'x': float(x),
                 'y': float(y),
                 'size': int(size)
             })
-        clusters.sort(key=lambda c: c['id'])
+        clusters.sort(key=lambda c: c['hashtag'])
         
         return JsonResponse({
-            'clusters': clusters
+            'clusters': clusters,
+            'max_x': float(max_x),
+            'max_y': float(max_y)
         })
     else:
         return HttpResponse(status=405)
