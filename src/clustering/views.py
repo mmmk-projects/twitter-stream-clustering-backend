@@ -21,7 +21,7 @@ def get_clusters(request):
         
         clusters = []
         max_x, max_y = 0, 0
-        for idx, label in enumerate(clusters_dict.keys()):
+        for label in clusters_dict.keys():
             size = len(clusters_dict[label])
             x_list = [doc_coordinate[0] for doc_coordinate in clusters_dict[label]]
             y_list = [doc_coordinate[1] for doc_coordinate in clusters_dict[label]]
