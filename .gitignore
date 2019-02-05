@@ -1,0 +1,20 @@
+# code specific
+db.sqlite3
+*.egg-info
+*.pot
+*.py[co]
+.tox
+__pycache__
+MANIFEST
+dist/
+docs/_build
+tests/report
+tests/coverage_html/
+tests/.coverage
+build/
+
+# VS Code specific
+.vscode/
+
+# macOS specific
+.DS_Store
