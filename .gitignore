@@ -12,6 +12,8 @@ tests/report
 tests/coverage_html/
 tests/.coverage
 build/
+data/
+model/
 
 # VS Code specific
 .vscode/
