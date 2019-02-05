@@ -33,7 +33,7 @@ def get_clusters(request):
             if abs(y) > max_y:
                 max_y = abs(y)
             words = []
-            for d, l in zip(document_words, labels):
+            for d, l in zip(document_words[request_body['from_idx']:request_body['to_idx']], labels):
                 if l == label:
                     words.extend(d)
             hashtag = max(set(words), key=words.count)
