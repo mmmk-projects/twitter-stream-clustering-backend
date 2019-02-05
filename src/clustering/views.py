@@ -4,7 +4,7 @@ from sklearn.cluster import KMeans
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .data import document_vectors
+from .data import document_words, document_vectors
 
 @csrf_exempt
 def get_clusters(request):
@@ -13,8 +13,9 @@ def get_clusters(request):
         documents = document_vectors[request_body['from_idx']:request_body['to_idx']]
 
         clustering = KMeans().fit(documents)
+        labels = clustering.labels_
         clusters_dict = {}
-        for doc_coordinate, label in zip(documents, clustering.labels_):
+        for doc_coordinate, label in zip(documents, labels):
             if label not in clusters_dict:
                 clusters_dict[label] = []
             clusters_dict[label].append(doc_coordinate)
@@ -31,8 +32,13 @@ def get_clusters(request):
                 max_x = abs(x)
             if abs(y) > max_y:
                 max_y = abs(y)
+            words = []
+            for d, l in zip(document_words, labels):
+                if l == label:
+                    words.extend(d)
+            hashtag = max(set(words), key=words.count)
             clusters.append({
-                'hashtag': int(label + 1),
+                'hashtag': str(hashtag),
                 'x': float(x),
                 'y': float(y),
                 'size': int(size)

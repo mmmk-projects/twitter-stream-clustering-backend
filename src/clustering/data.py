@@ -33,6 +33,7 @@ for _, row in documents.iterrows():
 
 vectors = list(map(lambda word: w2v[word], words))
 
+document_words = []
 document_vectors = []
 first_index = 0
 (vector_size,) = w2v[words[0]].shape
@@ -44,6 +45,7 @@ for last_index in last_indices:
             v = sum(v_list) / len(v_list)
             vector.append(v)
     if len(vector) > 0:
+        document_words.append(words[first_index:last_index])
         document_vectors.append(vector)
     first_index = last_index
 document_vectors = list(document_vectors)
