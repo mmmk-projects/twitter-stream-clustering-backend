@@ -11,6 +11,8 @@ from django.conf import settings
 english_words = set(nltk.corpus.words.words())
 english_stop_words = nltk.corpus.stopwords.words("english")
 
+max_data_index = 3000
+
 def preprocess(text):
     return " ".join(w for w in nltk.wordpunct_tokenize(text)
         if w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
@@ -20,7 +22,7 @@ def tokenize(document):
 
 w2v = KeyedVectors.load(".{}gensim_w2v.kv".format(settings.MODEL_URL))
 
-documents = pd.read_csv(".{}train.csv".format(settings.DATA_URL), dtype=object)[["question1"]].dropna().sample(n=3000).reset_index(drop=True)
+documents = pd.read_csv(".{}train.csv".format(settings.DATA_URL), dtype=object)[["question1"]].dropna().sample(n=max_data_index).reset_index(drop=True)
 last_indices = []
 words = []
 for _, row in documents.iterrows():

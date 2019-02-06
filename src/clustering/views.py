@@ -1,18 +1,31 @@
-import json
 import numpy as np
 from sklearn.cluster import KMeans
 
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .data import document_vectors, document_vectors_reduced, w2v
+from .data import document_vectors, document_vectors_reduced, max_data_index, w2v
+
+max_data_size = 117 * 2
+update_size = 30
+
+from_idx, to_idx = 0, 100
+
+def update_indices():
+    global from_idx, to_idx
+    to_idx += update_size
+    if to_idx > max_data_index:
+        from_idx = 0
+        to = max_data_size
+    elif to_idx - from_idx > max_data_size:
+        from_idx = to_idx - max_data_size
 
 @csrf_exempt
 def get_clusters(request):
-    if request.method == 'POST':
-        request_body = json.loads(request.body.decode('utf-8'))
-        documents = document_vectors[request_body['from_idx']:request_body['to_idx']]
-        documents_reduced = document_vectors_reduced[request_body['from_idx']:request_body['to_idx']]
+    if request.method == 'GET':
+        documents = document_vectors[from_idx:to_idx]
+        documents_reduced = document_vectors_reduced[from_idx:to_idx]
+        update_indices()
 
         clustering = KMeans().fit(documents_reduced)
         labels = clustering.labels_
