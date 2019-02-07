@@ -12,6 +12,8 @@ english_words = set(nltk.corpus.words.words())
 english_stop_words = nltk.corpus.stopwords.words("english")
 
 max_data_index = 3000
+max_data_size = 117 * 2
+update_size = 30
 
 def preprocess(text):
     return " ".join(w for w in nltk.wordpunct_tokenize(text)

@@ -4,10 +4,7 @@ from sklearn.cluster import KMeans
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .data import document_vectors, document_vectors_reduced, max_data_index, w2v
-
-max_data_size = 117 * 2
-update_size = 30
+from .data import document_vectors, document_vectors_reduced, max_data_index, max_data_size, update_size, w2v
 
 from_idx, to_idx = 0, 100
 
