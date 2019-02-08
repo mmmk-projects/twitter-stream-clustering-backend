@@ -13,7 +13,7 @@ def update_indices():
     to_idx += update_size
     if to_idx > max_data_index:
         from_idx = 0
-        to = max_data_size
+        to_idx = max_data_size
     elif to_idx - from_idx > max_data_size:
         from_idx = to_idx - max_data_size
 
