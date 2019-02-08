@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from django.conf import settings
 
 english_words = set(nltk.corpus.words.words())
-english_stop_words = nltk.corpus.stopwords.words("english")
+english_stop_words = nltk.corpus.stopwords.words('english')
 
 lemmatizer = WordNetLemmatizer()
 
@@ -18,27 +18,20 @@ max_data_index = 3000
 max_data_size = 117 * 2
 update_size = 30
 
-def lemmatize(word):
-    noun, verb = lemmatizer.lemmatize(word), lemmatizer.lemmatize(word, "v")
-    if len(word) == len(noun):
-        return verb
-    else:
-        return noun
-
 def preprocess(text):
-    return " ".join(lemmatize(w) for w in nltk.wordpunct_tokenize(text)
-        if w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
+    return ' '.join(lemmatizer.lemmatize(w) for w, tag in nltk.pos_tag(nltk.wordpunct_tokenize(text))
+        if tag == 'N' and w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
 
 def tokenize(document):
-    return simple_preprocess(str(document).encode("utf-8"))
+    return simple_preprocess(str(document).encode('utf-8'))
 
-w2v = KeyedVectors.load(".{}gensim_w2v.kv".format(settings.MODEL_URL))
+w2v = KeyedVectors.load('.{}gensim_w2v.kv'.format(settings.MODEL_URL))
 
-documents = pd.read_csv(".{}train.csv".format(settings.DATA_URL), dtype=object)[["question1"]].dropna().sample(n=max_data_index).reset_index(drop=True)
+documents = pd.read_csv('.{}train.csv'.format(settings.DATA_URL), dtype=object)[['question1']].dropna().sample(n=max_data_index).reset_index(drop=True)
 last_indices = []
 words = []
 for _, row in documents.iterrows():
-    tokens = tokenize(preprocess(row["question1"]))
+    tokens = tokenize(preprocess(row['question1']))
     if len(last_indices) > 0:
         last_indices.append(last_indices[len(last_indices) - 1] + len(tokens))
     else:
