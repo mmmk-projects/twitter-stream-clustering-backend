@@ -1,6 +1,7 @@
 from gensim.models import KeyedVectors
 from gensim.utils import simple_preprocess
 import nltk
+from nltk.stem.wordnet import WordNetLemmatizer
 import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
@@ -11,12 +12,21 @@ from django.conf import settings
 english_words = set(nltk.corpus.words.words())
 english_stop_words = nltk.corpus.stopwords.words("english")
 
+lemmatizer = WordNetLemmatizer()
+
 max_data_index = 3000
 max_data_size = 117 * 2
 update_size = 30
 
+def lemmatize(word):
+    noun, verb = lemmatizer.lemmatize(word), lemmatizer.lemmatize(word, "v")
+    if len(word) == len(noun):
+        return verb
+    else:
+        return noun
+
 def preprocess(text):
-    return " ".join(w for w in nltk.wordpunct_tokenize(text)
+    return " ".join(lemmatize(w) for w in nltk.wordpunct_tokenize(text)
         if w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
 
 def tokenize(document):
