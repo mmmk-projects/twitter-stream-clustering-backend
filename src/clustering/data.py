@@ -14,13 +14,13 @@ english_stop_words = nltk.corpus.stopwords.words('english')
 
 lemmatizer = WordNetLemmatizer()
 
-max_data_index = 3000
+max_data_index = 5000
 max_data_size = 117 * 2
 update_size = 30
 
 def preprocess(text):
     return ' '.join(lemmatizer.lemmatize(w) for w, tag in nltk.pos_tag(nltk.wordpunct_tokenize(text))
-        if tag == 'N' and w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
+        if tag[0] == 'N' and w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
 
 def tokenize(document):
     return simple_preprocess(str(document).encode('utf-8'))
