@@ -24,7 +24,7 @@ def get_clusters(request):
         documents_reduced = document_vectors_reduced[from_idx:to_idx]
         update_indices()
 
-        clustering = KMeans().fit(documents_reduced)
+        clustering = KMeans(5).fit(documents)
         labels = clustering.labels_
         clusters_dict = {}
         clusters_dict_reduced = {}
