@@ -3,9 +3,7 @@ from gensim.utils import simple_preprocess
 import nltk
 from nltk.stem.wordnet import WordNetLemmatizer
 import pandas as pd
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import MiniBatchKMeans
 
 from django.conf import settings
 
@@ -14,9 +12,9 @@ english_stop_words = nltk.corpus.stopwords.words('english')
 
 lemmatizer = WordNetLemmatizer()
 
-max_data_index = 5000
-max_data_size = 117 * 2
-update_size = 30
+max_data_index = 4800
+max_data_size = 240
+update_size = 240
 
 def preprocess(text):
     return ' '.join(lemmatizer.lemmatize(w) for w, tag in nltk.pos_tag(nltk.wordpunct_tokenize(text))
@@ -55,7 +53,5 @@ for last_index in last_indices:
     first_index = last_index
 document_vectors = list(document_vectors)
 
-document_vectors_reduced = StandardScaler().fit_transform(document_vectors)
-document_vectors_reduced = PCA(0.85).fit_transform(document_vectors_reduced)
-
-document_vectors_reduced = TSNE(n_components=2).fit_transform(document_vectors_reduced)
+kmeans = MiniBatchKMeans(n_clusters=8, batch_size=update_size)
+pca = None

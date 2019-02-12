@@ -1,15 +1,18 @@
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+# from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
 
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .data import document_vectors, document_vectors_reduced, max_data_index, max_data_size, update_size, w2v
+from .data import document_vectors, kmeans, max_data_index, max_data_size, pca, update_size, w2v
 
-from_idx, to_idx = 0, 100
+from_idx, to_idx = 0, 90
 
 def update_indices():
     global from_idx, to_idx
+
     to_idx += update_size
     if to_idx > max_data_index:
         from_idx = 0
@@ -20,48 +23,53 @@ def update_indices():
 @csrf_exempt
 def get_clusters(request):
     if request.method == 'GET':
-        documents = document_vectors[from_idx:to_idx]
-        documents_reduced = document_vectors_reduced[from_idx:to_idx]
-        update_indices()
+        global pca
 
-        clustering = KMeans(5).fit(documents)
-        labels = clustering.labels_
-        clusters_dict = {}
-        clusters_dict_reduced = {}
-        for doc_coordinate, doc_coordinate_reduced, label in zip(documents, documents_reduced, labels):
-            if label not in clusters_dict and label not in clusters_dict_reduced:
-                clusters_dict[label] = []
-                clusters_dict_reduced[label] = []
-            clusters_dict[label].append(doc_coordinate)
-            clusters_dict_reduced[label].append(doc_coordinate_reduced)
-        
+        documents = document_vectors[from_idx:to_idx]
+        print(len(documents), from_idx, to_idx)
+        update_indices()
+        while len(documents) == 0:
+            documents = document_vectors[from_idx:to_idx]
+            print(len(documents), from_idx, to_idx)
+            update_indices()
+
+        clustering = kmeans.partial_fit(documents)
+        centers = clustering.cluster_centers_
+        centers_reduced = StandardScaler().fit_transform(centers)
+        if pca is None:
+            pca = PCA(n_components=2)
+            centers_reduced = pca.fit_transform(centers_reduced)
+        else:
+            centers_reduced = pca.transform(centers_reduced)
+        # centers_reduced = PCA(0.85).fit_transform(centers_reduced)
+        # centers_reduced = TSNE(n_components=2).fit_transform(centers_reduced)
+
+        labels = list(dict.fromkeys(clustering.labels_))
+        label_sizes = {}
+        for label in clustering.labels_:
+            if label not in label_sizes:
+                label_sizes[label] = 0
+            label_sizes[label] += 1
+
         clusters = []
         max_x, max_y = 0, 0
-        for label in clusters_dict_reduced.keys():
-            size = len(clusters_dict_reduced[label])
-            x_list = [doc_coordinate[0] for doc_coordinate in clusters_dict_reduced[label]]
-            y_list = [doc_coordinate[1] for doc_coordinate in clusters_dict_reduced[label]]
-            x = sum(x_list) / len(x_list)
-            y = sum(y_list) / len(y_list)
-            if abs(x) > max_x:
-                max_x = abs(x)
-            if abs(y) > max_y:
-                max_y = abs(y)
+        for center, center_reduced, label in zip(centers, centers_reduced, labels):
+            hashtag = w2v.similar_by_vector(np.array(center), topn=1)[0][0]
+            x, y = center_reduced[0], center_reduced[1]
+            if x > max_x:
+                max_x = x
+            if y > max_y:
+                max_y = y
 
-            vector = []
-            for i in range(len(clusters_dict[label][0])):
-                axis_list = [doc_coordinate[i] for doc_coordinate in clusters_dict[label]]
-                vector.append(sum(axis_list) / len(axis_list))
-            hashtag, _ = w2v.similar_by_vector(np.array(vector), topn=1)[0]
-            
             clusters.append({
+                'id': float(label),
                 'hashtag': str(hashtag),
                 'x': float(x),
                 'y': float(y),
-                'size': int(size)
+                'size': label_sizes[label]
             })
-        clusters.sort(key=lambda c: c['hashtag'])
-        
+        clusters.sort(key=lambda c: c['id'])
+
         return JsonResponse({
             'clusters': clusters,
             'max_x': float(max_x),
