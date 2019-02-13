@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.decomposition import PCA
-# from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 
 from django.http import HttpResponse, JsonResponse
@@ -26,11 +25,9 @@ def get_clusters(request):
         global pca
 
         documents = document_vectors[from_idx:to_idx]
-        print(len(documents), from_idx, to_idx)
         update_indices()
         while len(documents) == 0:
             documents = document_vectors[from_idx:to_idx]
-            print(len(documents), from_idx, to_idx)
             update_indices()
 
         clustering = kmeans.partial_fit(documents)
@@ -41,8 +38,6 @@ def get_clusters(request):
             centers_reduced = pca.fit_transform(centers_reduced)
         else:
             centers_reduced = pca.transform(centers_reduced)
-        # centers_reduced = PCA(0.85).fit_transform(centers_reduced)
-        # centers_reduced = TSNE(n_components=2).fit_transform(centers_reduced)
 
         labels = list(dict.fromkeys(clustering.labels_))
         label_sizes = {}
