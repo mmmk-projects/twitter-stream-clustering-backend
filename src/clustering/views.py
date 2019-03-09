@@ -1,3 +1,6 @@
+from gensim.utils import simple_preprocess
+import nltk
+from nltk.stem.wordnet import WordNetLemmatizer
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -5,7 +8,14 @@ from sklearn.preprocessing import StandardScaler
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .data import document_vectors, kmeans, max_data_index, max_data_size, pca, update_size, w2v
+from .data import documents, kmeans, max_data_index, pca, update_size, w2v
+
+english_words = set(nltk.corpus.words.words())
+english_stop_words = nltk.corpus.stopwords.words('english')
+
+lemmatizer = WordNetLemmatizer()
+
+max_data_size = 240
 
 from_idx, to_idx = 0, 90
 
@@ -19,18 +29,52 @@ def update_indices():
     elif to_idx - from_idx > max_data_size:
         from_idx = to_idx - max_data_size
 
+def preprocess(text):
+    return ' '.join(lemmatizer.lemmatize(w) for w, tag in nltk.pos_tag(nltk.wordpunct_tokenize(text))
+        if tag[0] == 'N' and w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
+
+def tokenize(document):
+    return simple_preprocess(str(document).encode('utf-8'))
+
 @csrf_exempt
 def get_clusters(request):
     if request.method == 'GET':
         global pca
 
-        documents = document_vectors[from_idx:to_idx]
+        docs = documents[from_idx:to_idx]
         update_indices()
-        while len(documents) == 0:
-            documents = document_vectors[from_idx:to_idx]
+        while len(docs) == 0:
+            docs = documents[from_idx:to_idx]
             update_indices()
+        
+        last_indices = []
+        words = []
+        for _, row in docs.iterrows():
+            tokens = tokenize(preprocess(row['question1']))
+            if len(last_indices) > 0:
+                last_indices.append(last_indices[len(last_indices) - 1] + len(tokens))
+            else:
+                last_indices.append(len(tokens))
+            words.extend(tokens)
 
-        clustering = kmeans.partial_fit(documents)
+        vectors = list(map(lambda word: w2v[word], words))
+
+        document_vectors = []
+        first_index = 0
+        (vector_size,) = w2v[words[0]].shape
+        for last_index in last_indices:
+            vector = []
+            for i in range(vector_size):
+                v_list = [v[i] for v in vectors[first_index:last_index]]
+                if len(v_list) > 0:
+                    v = sum(v_list) / len(v_list)
+                    vector.append(v)
+            if len(vector) > 0:
+                document_vectors.append(vector)
+            first_index = last_index
+        document_vectors = list(document_vectors)
+
+        clustering = kmeans.partial_fit(document_vectors)
         centers = clustering.cluster_centers_
         centers_reduced = StandardScaler().fit_transform(centers)
         if pca is None:
