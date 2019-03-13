@@ -2,6 +2,7 @@ from gensim.utils import simple_preprocess
 import nltk
 from nltk.stem.wordnet import WordNetLemmatizer
 import numpy as np
+from sklearn import metrics
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
@@ -59,22 +60,34 @@ def get_clusters(request):
 
         vectors = list(map(lambda word: w2v[word], words))
 
+        document_centers = []
         document_vectors = []
         first_index = 0
         (vector_size,) = w2v[words[0]].shape
         for last_index in last_indices:
             vector = []
+            min_vector = []
+            max_vector = []
             for i in range(vector_size):
                 v_list = [v[i] for v in vectors[first_index:last_index]]
                 if len(v_list) > 0:
                     v = sum(v_list) / len(v_list)
+                    min_v = min(v_list)
+                    max_v = max(v_list)
                     vector.append(v)
+                    min_vector.append(min_v)
+                    max_vector.append(max_v)
             if len(vector) > 0:
-                document_vectors.append(vector)
+                document_centers.append(vector)
+                min_vector.extend(max_vector)
+                document_vectors.append(min_vector)
             first_index = last_index
+        document_centers = list(document_centers)
         document_vectors = list(document_vectors)
 
         clustering = kmeans.partial_fit(document_vectors)
+        labels = clustering.labels_
+        print('Silhouette Coefficient: {}'.format(metrics.silhouette_score(document_vectors, labels)))
         centers = clustering.cluster_centers_
         centers_reduced = StandardScaler().fit_transform(centers)
         if pca is None:
@@ -92,7 +105,7 @@ def get_clusters(request):
 
         clusters = []
         max_x, max_y = 0, 0
-        for center, center_reduced, label in zip(centers, centers_reduced, labels):
+        for center, center_reduced, label in zip(document_centers, centers_reduced, labels):
             hashtag = w2v.similar_by_vector(np.array(center), topn=1)[0][0]
             x, y = center_reduced[0], center_reduced[1]
             if x > max_x:
