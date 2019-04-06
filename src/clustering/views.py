@@ -2,14 +2,15 @@ from gensim.utils import simple_preprocess
 import nltk
 from nltk.stem.wordnet import WordNetLemmatizer
 import numpy as np
-from sklearn import metrics
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .data import documents, kmeans, max_data_index, pca, update_size, w2v
+from collections import Counter
+
+from .data import clustered_docs, clustered_word_count, documents, kmeans, max_data_index, pca, update_size, w2v
 
 english_words = set(nltk.corpus.words.words())
 english_stop_words = nltk.corpus.stopwords.words('english')
@@ -87,7 +88,6 @@ def get_clusters(request):
 
         clustering = kmeans.partial_fit(document_vectors)
         labels = clustering.labels_
-        print('Silhouette Coefficient: {}'.format(metrics.silhouette_score(document_vectors, labels)))
         centers = clustering.cluster_centers_
         centers_reduced = StandardScaler().fit_transform(centers)
         if pca is None:
@@ -106,6 +106,21 @@ def get_clusters(request):
         clusters = []
         max_x, max_y = 0, 0
         for center, center_reduced, label in zip(document_centers, centers_reduced, labels):
+            member_docs = []
+            for idx, row in docs.iterrows():
+                if idx < len(clustering.labels_) and clustering.labels_[idx] == label:
+                    member_docs.append(row['question1'])
+            if label not in clustered_docs:
+                clustered_docs[label] = []
+            clustered_docs[label].extend(member_docs)
+            clustered_docs[label].sort()
+
+            doc_words = []
+            for doc in clustered_docs[label]:
+                doc_words.extend(tokenize(preprocess(doc)))
+            word_count = Counter(doc_words)
+            clustered_word_count[label] = sorted(word_count.items(), key=lambda kv: kv[1], reverse=True)
+
             hashtag = w2v.similar_by_vector(np.array(center), topn=1)[0][0]
             x, y = center_reduced[0], center_reduced[1]
             if x > max_x:
@@ -118,7 +133,9 @@ def get_clusters(request):
                 'hashtag': str(hashtag),
                 'x': float(x),
                 'y': float(y),
-                'size': label_sizes[label]
+                'size': label_sizes[label],
+                'documents': clustered_docs[label],
+                'word_count': clustered_word_count[label]
             })
         clusters.sort(key=lambda c: c['id'])
 

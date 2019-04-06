@@ -13,3 +13,6 @@ documents = pd.read_csv('.{}train.csv'.format(settings.DATA_URL), dtype=object)[
 
 kmeans = MiniBatchKMeans(n_clusters=8, batch_size=update_size)
 pca = None
+
+clustered_docs = {}
+clustered_word_count = {}
