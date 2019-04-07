@@ -32,8 +32,8 @@ def update_indices():
         from_idx = to_idx - max_data_size
 
 def preprocess(text):
-    return ' '.join(lemmatizer.lemmatize(w) for w, tag in nltk.pos_tag(nltk.wordpunct_tokenize(text))
-        if tag[0] == 'N' and w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
+    return ' '.join(lemmatizer.lemmatize(w) for w in nltk.wordpunct_tokenize(text)
+        if w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
 
 def tokenize(document):
     return simple_preprocess(str(document).encode('utf-8'))
@@ -52,7 +52,7 @@ def get_clusters(request):
         last_indices = []
         words = []
         for _, row in docs.iterrows():
-            tokens = tokenize(preprocess(row['question1']))
+            tokens = tokenize(preprocess(row['text']))
             if len(last_indices) > 0:
                 last_indices.append(last_indices[len(last_indices) - 1] + len(tokens))
             else:
@@ -107,17 +107,16 @@ def get_clusters(request):
         max_x, max_y = 0, 0
         for center, center_reduced, label in zip(document_centers, centers_reduced, labels):
             member_docs = []
-            for idx, row in docs.iterrows():
+            for idx, row in enumerate(docs.to_dict('records')):
                 if idx < len(clustering.labels_) and clustering.labels_[idx] == label:
-                    member_docs.append(row['question1'])
+                    member_docs.append(row)
             if label not in clustered_docs:
                 clustered_docs[label] = []
             clustered_docs[label].extend(member_docs)
-            clustered_docs[label].sort()
 
             doc_words = []
             for doc in clustered_docs[label]:
-                doc_words.extend(tokenize(preprocess(doc)))
+                doc_words.extend(tokenize(preprocess(doc['text'])))
             word_count = Counter(doc_words)
             clustered_word_count[label] = sorted(word_count.items(), key=lambda kv: kv[1], reverse=True)
 
