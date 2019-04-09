@@ -17,7 +17,7 @@ english_stop_words = nltk.corpus.stopwords.words('english')
 
 lemmatizer = WordNetLemmatizer()
 
-max_data_size = 240
+max_data_size = 118
 
 from_idx, to_idx = 0, 90
 
@@ -113,12 +113,16 @@ def get_clusters(request):
             if label not in clustered_docs:
                 clustered_docs[label] = []
             clustered_docs[label].extend(member_docs)
+            clustered_docs_size = len(clustered_docs[label])
+            if clustered_docs_size > max_data_size:
+                clustered_docs[label] = clustered_docs[label][clustered_docs_size-max_data_size:]
 
             doc_words = []
             for doc in clustered_docs[label]:
                 doc_words.extend(tokenize(preprocess(doc['text'])))
             word_count = Counter(doc_words)
-            clustered_word_count[label] = sorted(word_count.items(), key=lambda kv: kv[1], reverse=True)
+            sorted_word_count = sorted(word_count.items(), key=lambda kv: kv[1], reverse=True)
+            clustered_word_count[label] = [{'word': word, 'count': count} for word, count in sorted_word_count]
 
             hashtag = w2v.similar_by_vector(np.array(center), topn=1)[0][0]
             x, y = center_reduced[0], center_reduced[1]
