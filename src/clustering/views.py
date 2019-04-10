@@ -52,7 +52,7 @@ def get_clusters(request):
         last_indices = []
         words = []
         for _, row in docs.iterrows():
-            tokens = tokenize(preprocess(row['text']))
+            tokens = tokenize(preprocess(row['clean_text']))
             if len(last_indices) > 0:
                 last_indices.append(last_indices[len(last_indices) - 1] + len(tokens))
             else:
@@ -119,7 +119,7 @@ def get_clusters(request):
 
             doc_words = []
             for doc in clustered_docs[label]:
-                doc_words.extend(tokenize(preprocess(doc['text'])))
+                doc_words.extend(tokenize(preprocess(doc['clean_text'])))
             word_count = Counter(doc_words)
             sorted_word_count = sorted(word_count.items(), key=lambda kv: kv[1], reverse=True)
             clustered_word_count[label] = [{'word': word, 'count': count} for word, count in sorted_word_count]
