@@ -9,6 +9,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from collections import Counter
+import operator
 
 from .data import clustered_docs, clustered_word_count, documents, kmeans, max_data_index, pca, update_size, w2v
 
@@ -116,6 +117,7 @@ def get_clusters(request):
             clustered_docs_size = len(clustered_docs[label])
             if clustered_docs_size > max_data_size:
                 clustered_docs[label] = clustered_docs[label][clustered_docs_size-max_data_size:]
+            clustered_docs[label].sort(key=operator.itemgetter('time', 'retweets', 'likes'), reverse=True)
 
             doc_words = []
             for doc in clustered_docs[label]:
@@ -132,7 +134,7 @@ def get_clusters(request):
                 max_y = y
 
             clusters.append({
-                'id': float(label),
+                'id': float(label) + 1,
                 'hashtag': str(hashtag),
                 'x': float(x),
                 'y': float(y),
