@@ -1,6 +1,3 @@
-from gensim.utils import simple_preprocess
-import nltk
-from nltk.stem.wordnet import WordNetLemmatizer
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -11,12 +8,9 @@ from django.views.decorators.csrf import csrf_exempt
 from collections import Counter
 import operator
 
-from .data import clustered_docs, clustered_word_count, documents, kmeans, max_data_index, pca, update_size, w2v
-
-english_words = set(nltk.corpus.words.words())
-english_stop_words = nltk.corpus.stopwords.words('english')
-
-lemmatizer = WordNetLemmatizer()
+from .data import clustered_docs, clustered_word_count, documents, \
+                  kmeans, max_data_index, pca, update_size, w2v
+from .tweet_preprocessor import preprocess
 
 max_data_size = 118
 
@@ -32,28 +26,22 @@ def update_indices():
     elif to_idx - from_idx > max_data_size:
         from_idx = to_idx - max_data_size
 
-def preprocess(text):
-    return ' '.join(lemmatizer.lemmatize(w) for w in nltk.wordpunct_tokenize(text)
-        if w.lower() in english_words and w.lower() not in english_stop_words or not w.isalpha())
-
-def tokenize(document):
-    return simple_preprocess(str(document).encode('utf-8'))
-
 @csrf_exempt
 def get_clusters(request):
     if request.method == 'GET':
         global pca
 
-        docs = documents[from_idx:to_idx]
+        docs = documents[from_idx:to_idx].copy()
         update_indices()
         while len(docs) == 0:
             docs = documents[from_idx:to_idx]
             update_indices()
+        preprocess(docs, 'clean_text', 'text')
         
         last_indices = []
         words = []
         for _, row in docs.iterrows():
-            tokens = tokenize(preprocess(row['clean_text']))
+            tokens = row['clean_text'].split()
             if len(last_indices) > 0:
                 last_indices.append(last_indices[len(last_indices) - 1] + len(tokens))
             else:
@@ -121,7 +109,7 @@ def get_clusters(request):
 
             doc_words = []
             for doc in clustered_docs[label]:
-                doc_words.extend(tokenize(preprocess(doc['clean_text'])))
+                doc_words.extend(doc['clean_text'].split())
             word_count = Counter(doc_words)
             sorted_word_count = sorted(word_count.items(), key=lambda kv: kv[1], reverse=True)
             clustered_word_count[label] = [{'word': word, 'count': count} for word, count in sorted_word_count]
