@@ -106,6 +106,7 @@ def replace_special_cases(df, final_row, init_row=None):
     def _replace_special_cases(tweet):
         tweet = re.sub(r'instructress', 'instructor', tweet)
         tweet = re.sub(r'nonproduction', 'production', tweet)
+        tweet = re.sub(r'sledder', 'sled', tweet)
         tweet = re.sub(r'signless', 'sign', tweet)
         tweet = re.sub(r'wishless', 'wish', tweet)
 
