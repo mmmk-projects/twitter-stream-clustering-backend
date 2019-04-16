@@ -15,6 +15,7 @@ numpy = "*"
 pandas = "*"
 paramiko = "*"
 scikit-learn = "*"
+scipy = "*"
 tweet-preprocessor = "*"
 pylint = "*"
 
