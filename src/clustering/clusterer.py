@@ -84,7 +84,7 @@ class TwitterKMeans:
 
         new_centroids = []
         for label in range(self.__n_clusters):
-            tweets = self.__tweets[(self.__tweets['label'] == label) & (self.__tweets['ttl'] > 0)]
+            tweets = self.__tweets[(self.__tweets['label'] == label) & (self.__tweets['ttl'] > 0.1)]
             if len(tweets.index) > 0:
                 centroid = np.mean([self.__create_vector(tweet) for tweet in tweets['cleanText'].values],
                                    axis=0).tolist()
