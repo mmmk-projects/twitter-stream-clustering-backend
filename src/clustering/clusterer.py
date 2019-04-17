@@ -153,7 +153,7 @@ class TwitterKMeans:
                 'wordCount': word_count
             })
         if max_size > max_data_size:
-            scale_ratio = math.ceil(max_size / max_data_size)
+            scale_ratio = math.ceil(max_size / (max_data_size * 2.0 / 3.0))
             for cluster in clusters:
                 cluster['size'] = math.ceil(cluster['size'] / scale_ratio)
         
