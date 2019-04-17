@@ -8,9 +8,12 @@ from sklearn.preprocessing import StandardScaler
 from django.conf import settings
 
 from collections import Counter
+import math
 import operator
 
 from .tweet_preprocessor import preprocess, stopwords
+
+max_data_size = 118
 
 class TwitterKMeans:
 
@@ -93,6 +96,7 @@ class TwitterKMeans:
             reduced_centroids = self.__pca.transform(reduced_centroids)
         
         clusters = []
+        max_size = max_data_size
         max_x, max_y = 0, 0
         for label in range(self.__n_clusters):
             centroid = centroids[label]
@@ -114,7 +118,7 @@ class TwitterKMeans:
             idx = 0
             hashtags = self.__model.similar_by_vector(cadidate_hashtag, topn=10)
             hashtag = hashtags[idx][0]
-            while hashtag in [cluster['hashtag'] for cluster in clusters]:
+            while  hashtag in stopwords or hashtag in [cluster['hashtag'] for cluster in clusters]:
                 idx += 1
                 hashtag = hashtags[idx][0]
 
@@ -124,15 +128,23 @@ class TwitterKMeans:
             if abs(y) > max_y:
                 max_y = abs(y)
             
+            size = len(documents)
+            if size > max_size:
+                max_size = size
+            
             clusters.append({
                 'id': float(label) + 1,
                 'hashtag': str(hashtag),
                 'x': float(x),
                 'y': float(y),
-                'size': float(len(documents)),
+                'size': float(size),
                 'documents': documents,
                 'wordCount': word_count
             })
+        if max_size > max_data_size:
+            scale_ratio = max_size / max_data_size
+            for cluster in clusters:
+                cluster['size'] = math.ceil(cluster['size'] / scale_ratio)
         
         return clusters, max_x, max_y
     

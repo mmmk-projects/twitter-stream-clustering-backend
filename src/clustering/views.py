@@ -1,10 +1,9 @@
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
+from .clusterer import max_data_size
 from .data import documents, max_data_index, twitter_kmeans, update_size
 from .tweet_preprocessor import preprocess
-
-max_data_size = 118
 
 from_idx, to_idx = 0, 90
 
