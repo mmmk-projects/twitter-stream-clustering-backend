@@ -23,6 +23,7 @@ class TwitterKMeans:
         self.__n_clusters = n_clusters
         self.__fading = fading
         self.__n_iterations = n_iterations
+        self.__init = False
 
         self.__tweets = None
         self.__centroids = None
@@ -34,6 +35,8 @@ class TwitterKMeans:
     Main clustering procedures
     """""""""""""""""""""""""""
     def cluster(self, tweets):
+        self.__init = False
+
         tweets = preprocess(tweets)
 
         if self.__tweets is None or self.__centroids is None:
@@ -44,6 +47,8 @@ class TwitterKMeans:
         return self.__summarize(self.__centroids)
 
     def __init_clusters(self, new_tweets, init=True):
+        self.__init = True
+
         self.__tweets = new_tweets
         if init:
             self.__tweets['ttl'] = 1
@@ -56,6 +61,8 @@ class TwitterKMeans:
         self.__centroids = [centroid.tolist() for centroid in clustering.cluster_centers_]
     
     def __increment_clusters(self, new_tweets):
+        self.__init = False
+
         new_tweets['ttl'] = 1
 
         tweet_vectors = [self.__create_vector(tweet) for tweet in new_tweets['cleanText'].values]
@@ -146,11 +153,11 @@ class TwitterKMeans:
                 'wordCount': word_count
             })
         if max_size > max_data_size:
-            scale_ratio = max_size / max_data_size
+            scale_ratio = math.ceil(max_size / max_data_size)
             for cluster in clusters:
                 cluster['size'] = math.ceil(cluster['size'] / scale_ratio)
         
-        return clusters, max_x, max_y
+        return clusters, max_x, max_y, self.__init
     
     def __create_vector(self, tweet):
         word_vectors = [self.__model[word] for word in tweet.split()]

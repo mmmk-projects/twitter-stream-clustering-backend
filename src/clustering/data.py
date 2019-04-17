@@ -17,6 +17,7 @@ rare_freq = word_counts[word_counts <= 3]
 documents['cleanText'] = documents['text'].apply(lambda text: ' '.join(word for word in text.split()
                                                                        if word not in common_freq
                                                                        and word not in rare_freq))
+documents.sort_values(by=['time'], inplace=True)
 
 model = KeyedVectors.load_word2vec_format('.{}glove.6B.100d.word2vec'.format(settings.MODEL_URL))
 
