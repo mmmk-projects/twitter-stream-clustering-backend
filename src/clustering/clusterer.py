@@ -1,5 +1,6 @@
 from gensim.models import KeyedVectors
 import numpy as np
+from scipy.spatial import KDTree
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -13,7 +14,7 @@ from .tweet_preprocessor import preprocess, stopwords
 
 class TwitterKMeans:
 
-    def __init__(self, model, n_clusters=6, ttl=5, n_iterations=5):
+    def __init__(self, model, n_clusters=8, ttl=3, n_iterations=5):
         self.__model = model
 
         self.__n_clusters = n_clusters
@@ -21,6 +22,7 @@ class TwitterKMeans:
         self.__n_iterations = n_iterations
 
         self.__tweets = None
+        self.__centroids = None
 
         self.__pca = None
         self.__scaler = StandardScaler()
@@ -31,28 +33,57 @@ class TwitterKMeans:
     def cluster(self, tweets):
         tweets = preprocess(tweets)
 
-        # if self.__tweets is None:
-        #     centroids = self.__init_clusters(tweets)
-        # else:
-        #     centroids = self.__increment_clusters(tweets)
-        centroids = self.__init_clusters(tweets)
+        if self.__tweets is None or self.__centroids is None:
+            self.__init_clusters(tweets)
+        else:
+            self.__increment_clusters(tweets)
 
-        return self.__summarize(centroids)
+        return self.__summarize(self.__centroids)
 
-    def __init_clusters(self, tweets):
-        self.__tweets = tweets
+    def __init_clusters(self, new_tweets):
+        self.__tweets = new_tweets
         self.__tweets['ttl'] = self.__ttl
 
         tweet_vectors = [self.__create_vector(tweet) for tweet in self.__tweets['cleanText'].values]
         
         clustering = KMeans(n_clusters=self.__n_clusters).fit(tweet_vectors) 
-        self.__tweets['labels'] = clustering.labels_
+        self.__tweets['label'] = clustering.labels_
 
-        return [centroid.tolist() for centroid in clustering.cluster_centers_]
+        self.__centroids = [centroid.tolist() for centroid in clustering.cluster_centers_]
     
-    def __increment_clusters(self, tweets):
-        return []
+    def __increment_clusters(self, new_tweets):
+        new_tweets['ttl'] = self.__ttl
+
+        tweet_vectors = [self.__create_vector(tweet) for tweet in new_tweets['cleanText'].values]
+
+        tree = KDTree(self.__centroids)
+        active_labels = []
+        labels = []
+        for vector in tweet_vectors:
+            closest_label = self.__centroids.index(self.__centroids[tree.query(vector)[1]])
+            if closest_label not in active_labels:
+                active_labels.append(closest_label)
+            labels.append(closest_label)
+        new_tweets['label'] = labels
+
+        inactive_tweets = self.__tweets[~self.__tweets['label'].isin(active_labels)]
+        inactive_tweets['ttl'] = inactive_tweets['ttl'] - 1
+        self.__tweets = self.__tweets.drop(self.__tweets[self.__tweets['ttl'] <= 0].index)
+
+        self.__tweets = self.__tweets.append(new_tweets)
+
+        new_centroids = []
+        for label in range(self.__n_clusters):
+            tweets = self.__tweets[self.__tweets['label'] == label]
+            centroid = np.mean([self.__create_vector(tweet) for tweet in tweets['cleanText'].values],
+                               axis=0).tolist()
+            new_centroids.append(centroid)
+        
+        self.__centroids = new_centroids
     
+    """""""""""""""
+    Helper methods
+    """""""""""""""
     def __summarize(self, centroids):
         reduced_centroids = self.__scaler.fit_transform(centroids)
         if self.__pca is None:
@@ -67,8 +98,7 @@ class TwitterKMeans:
             centroid = centroids[label]
             reduced_centroid = reduced_centroids[label]
 
-            tweets = self.__tweets[self.__tweets['labels'] == label]
-            print(tweets)
+            tweets = self.__tweets[self.__tweets['label'] == label]
 
             documents = [tweet for tweet in tweets[['tweetId', 'time', 'user', 'text', 'cleanText', 'likes', 'retweets', 'replies']].to_dict('records')]
             documents.sort(key=operator.itemgetter('time', 'retweets', 'likes'), reverse=True)
@@ -106,9 +136,6 @@ class TwitterKMeans:
         
         return clusters, max_x, max_y
     
-    """""""""""""""
-    Helper methods
-    """""""""""""""
     def __create_vector(self, tweet):
         word_vectors = [self.__model[word] for word in tweet.split()]
 
