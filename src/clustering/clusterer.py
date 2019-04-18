@@ -3,6 +3,7 @@ import numpy as np
 from scipy.spatial import KDTree
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from sklearn.metrics import calinski_harabaz_score, davies_bouldin_score, silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 from django.conf import settings
@@ -17,13 +18,14 @@ max_data_size = 118
 
 class TwitterKMeans:
 
-    def __init__(self, model, n_clusters=8, fading=0.9, n_iterations=5):
+    def __init__(self, model, n_clusters=8, fading=0.9, thresh=0.1, n_iterations=5):
         self.__model = model
 
         self.__n_clusters = n_clusters
         self.__fading = fading
+        self.__thresh = thresh
         self.__n_iterations = n_iterations
-        self.__init = False
+        self.__is_init = False
 
         self.__tweets = None
         self.__centroids = None
@@ -44,16 +46,27 @@ class TwitterKMeans:
         else:
             self.__increment_clusters(tweets)
 
+        """""""""
+        Evaluation
+        """""""""
+        # active = self.__tweets['ttl'] > self.__thresh
+        # X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
+        # labels = self.__tweets[active]['label'].values
+        # print('Sillhouette score:', silhouette_score(X, labels))
+        # print('Calinzki-Harabaz score:', calinski_harabaz_score(X, labels))
+        # print('Davies-Bouldin score:', davies_bouldin_score(X, labels))
+
         return self.__summarize(self.__centroids)
 
     def __init_clusters(self, new_tweets, init=True):
-        self.__init = True
+        self.__is_init = True
 
         self.__tweets = new_tweets
         if init:
             self.__tweets['ttl'] = 1
 
-        tweet_vectors = [self.__create_vector(tweet) for tweet in self.__tweets[self.__tweets['ttl'] > 0]['cleanText'].values]
+        tweet_vectors = [self.__create_vector(tweet) for tweet in
+                         self.__tweets[self.__tweets['ttl'] > self.__thresh]['cleanText'].values]
         
         clustering = KMeans(n_clusters=self.__n_clusters).fit(tweet_vectors) 
         self.__tweets['label'] = clustering.labels_
@@ -61,7 +74,7 @@ class TwitterKMeans:
         self.__centroids = [centroid.tolist() for centroid in clustering.cluster_centers_]
     
     def __increment_clusters(self, new_tweets):
-        self.__init = False
+        self.__is_init = False
 
         new_tweets['ttl'] = 1
 
@@ -77,17 +90,20 @@ class TwitterKMeans:
             labels.append(closest_label)
         new_tweets['label'] = labels
 
-        self.__tweets.loc[self.__tweets['label'].isin(active_labels), 'ttl'] = 1
-        self.__tweets.loc[~self.__tweets['label'].isin(active_labels), 'ttl'] = self.__tweets['ttl'] * self.__fading
+        is_active = self.__tweets['label'].isin(active_labels)
+        self.__tweets.loc[is_active, 'ttl'] = 1
+        self.__tweets.loc[~is_active, 'ttl'] = self.__tweets['ttl'] * self.__fading
 
         self.__tweets = self.__tweets.append(new_tweets)
 
         new_centroids = []
         for label in range(self.__n_clusters):
-            tweets = self.__tweets[(self.__tweets['label'] == label) & (self.__tweets['ttl'] > 0.1)]
+            tweets = self.__tweets[(self.__tweets['label'] == label)
+                                   & (self.__tweets['ttl'] > self.__thresh)]
             if len(tweets.index) > 0:
-                centroid = np.mean([self.__create_vector(tweet) for tweet in tweets['cleanText'].values],
-                                   axis=0).tolist()
+                vectors = [self.__create_vector(tweet) for tweet in tweets['cleanText'].values]
+                centroid = np.mean(vectors, axis=0).tolist()
+
                 new_centroids.append(centroid)
         if len(new_centroids) < self.__n_clusters:
             self.__init_clusters(self.__tweets, init=False)
@@ -113,9 +129,11 @@ class TwitterKMeans:
             centroid = centroids[label]
             reduced_centroid = reduced_centroids[label]
 
-            tweets = self.__tweets[(self.__tweets['label'] == label) & (self.__tweets['ttl'] > 0)]
+            tweets = self.__tweets[(self.__tweets['label'] == label)
+                                   & (self.__tweets['ttl'] > self.__thresh)]
 
-            documents = [tweet for tweet in tweets[['tweetId', 'time', 'user', 'text', 'cleanText', 'likes', 'retweets', 'replies']].to_dict('records')]
+            cols = ['tweetId', 'time', 'user', 'text', 'cleanText', 'likes', 'retweets', 'replies']
+            documents = [tweet for tweet in tweets[cols].to_dict('records')]
             documents.sort(key=operator.itemgetter('time', 'retweets', 'likes'), reverse=True)
 
             word_count = Counter([words for doc in documents for words in doc['cleanText'].split()])
@@ -157,7 +175,7 @@ class TwitterKMeans:
             for cluster in clusters:
                 cluster['size'] = math.ceil(cluster['size'] / scale_ratio)
         
-        return clusters, max_x, max_y, self.__init
+        return clusters, max_x, max_y, self.__is_init
     
     def __create_vector(self, tweet):
         word_vectors = [self.__model[word] for word in tweet.split()]
