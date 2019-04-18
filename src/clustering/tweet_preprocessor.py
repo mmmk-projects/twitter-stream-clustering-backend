@@ -1,9 +1,9 @@
 import re
 
 from langdetect import detect
-from nltk import word_tokenize
-from nltk.corpus import words, stopwords
+from nltk.corpus import stopwords, wordnet, words
 from nltk.stem import WordNetLemmatizer
+from nltk.tag import pos_tag
 import pandas as pd
 import preprocessor as tweet
 
@@ -22,7 +22,7 @@ def to_lowercase(df):
     return df
 
 def remove_contractions(df):
-    def _remove_contractions(tweet):
+    def __remove_contractions(tweet):
         tweet = re.sub(r'’', '\'', tweet)
     
         tweet = re.sub(r'won\'t', 'will not', tweet)
@@ -39,7 +39,7 @@ def remove_contractions(df):
         
         return tweet
     
-    df['cleanText'] = df['cleanText'].apply(_remove_contractions)
+    df['cleanText'] = df['cleanText'].apply(__remove_contractions)
 
     return df
 
@@ -61,8 +61,16 @@ def remove_non_english_tweets(df):
     return df
 
 def lemmatize(df):
-    df['cleanText'] = df['cleanText'].apply(lambda text: ' '.join(lemmatizer.lemmatize(word)
-                                                                  for word in text.split()))
+    def __get_pos(tag):
+        tags = {'N': wordnet.NOUN, 'J': wordnet.ADJ, 'V': wordnet.VERB, 'R': wordnet.ADV}
+
+        try:
+            return tags[tag]
+        except KeyError:
+            return wordnet.NOUN
+
+    df['cleanText'] = df['cleanText'].apply(lambda text: ' '.join(lemmatizer.lemmatize(word[0], pos=__get_pos(word[1][0]))
+                                                                  for word in pos_tag(text.split())))
 
     return df
 
@@ -80,16 +88,61 @@ def remove_english_stopwords(df):
     return df
 
 def replace_special_cases(df):
-    def _replace_special_cases(tweet):
-        tweet = re.sub(r'instructress', 'instructor', tweet)
-        tweet = re.sub(r'nonproduction', 'production', tweet)
-        tweet = re.sub(r'sledder', 'sled', tweet)
-        tweet = re.sub(r'signless', 'sign', tweet)
-        tweet = re.sub(r'wishless', 'wish', tweet)
+    def __replace_special_cases(tweet):
+        special_words = [
+            ('annihilationist', 'annihilation'),
+            ('antivaccination', 'vaccination'),
+            ('cheapish', 'cheap'),
+            ('cooky', 'cook'),
+            ('desideratum', ''),
+            ('disjoin', 'join'),
+            ('eternalist', 'eternal'),
+            ('evenmindedness', 'mind'),
+            ('hexapod', 'leg'),
+            ('ideate', 'idea'),
+            ('imperturbability', 'perturb'),
+            ('instructress', 'instructor'),
+            ('intercorporate', 'corporate'),
+            ('nonapprehension', 'apprehend'),
+            ('nonappropriation', 'appropriate'),
+            ('nonattachment', 'attachment'),
+            ('nonattention', 'attention'),
+            ('nonbeing', 'being'),
+            ('noncomprehension', 'comprehend'),
+            ('nonconnection', 'connection'),
+            ('noncreation', 'creation'),
+            ('nondevelopment', 'development'),
+            ('nonduality', 'duality'),
+            ('nonmanifestation', 'manifestation'),
+            ('nonperception', 'perception'),
+            ('nonproduction', 'production'),
+            ('nonrealization', 'realization'),
+            ('nonrenunciation', 'renunciation'),
+            ('nutriment', ''),
+            ('omnivorousness', 'omnivore'),
+            ('preregulation', 'regulation'),
+            ('samiel', ''),
+            ('securer', 'secure'),
+            ('signless', 'sign'),
+            ('sledder', 'sled'),
+            ('suchness', 'such'),
+            ('ultraorthodox', 'orthodox'),
+            ('unascertainable', 'certain'),
+            ('unawakened', 'awakened'),
+            ('unexalted', 'exalt'),
+            ('unrememberable', 'memorable'),
+            ('unseeable', 'see'),
+            ('unyoked', ''),
+            ('waterdrop', 'water'),
+            ('wishless', 'wish'),
+            ('worldlike', 'world')
+        ]
+        for word, replacement in special_words:
+            tweet = re.sub(word, replacement, tweet)
 
         return tweet
 
-    df['cleanText'] = df['cleanText'].apply(_replace_special_cases)
+    df['cleanText'] = df['cleanText'].apply(__replace_special_cases)
 
     return df
 
@@ -109,7 +162,7 @@ def preprocess(df):
     df = lemmatize(df)
     df = remove_non_english_words(df)
     df = remove_english_stopwords(df)
-    df = remove_empty_tweets(df)
     df = replace_special_cases(df)
+    df = remove_empty_tweets(df)
 
     return df
