@@ -50,12 +50,12 @@ class TwitterKMeans:
         """""""""
         Evaluation
         """""""""
-        # active = self.__tweets['ttl'] > self.__thresh
-        # X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
-        # labels = self.__tweets[active]['label'].values
-        # print('Sillhouette score:', silhouette_score(X, labels))
-        # print('Calinzki-Harabaz score:', calinski_harabaz_score(X, labels))
-        # print('Davies-Bouldin score:', davies_bouldin_score(X, labels))
+        active = self.__tweets['ttl'] > self.__thresh
+        X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
+        labels = self.__tweets[active]['label'].values
+        print('Sillhouette score:', silhouette_score(X, labels))
+        print('Calinzki-Harabaz score:', calinski_harabaz_score(X, labels))
+        print('Davies-Bouldin score:', davies_bouldin_score(X, labels))
 
         return self.__summarize(self.__centroids)
 
@@ -152,7 +152,7 @@ class TwitterKMeans:
             noun_hashtags = [hashtag[0] for hashtag in pos_tag(hashtags) if hashtag[1][0] == 'N']
             if len(noun_hashtags) > 1:
                 hashtag = noun_hashtags[idx]
-                while hashtag in [cluster['hashtag'] for cluster in clusters]:
+                while hashtag not in stopwords or hashtag in [cluster['hashtag'] for cluster in clusters]:
                     idx += 1
                     hashtag = noun_hashtags[idx]
             else:
