@@ -1,4 +1,6 @@
 import re
+import warnings
+warnings.filterwarnings("ignore")
 
 from langdetect import detect
 from nltk.corpus import stopwords, wordnet, words
@@ -87,27 +89,6 @@ def remove_english_stopwords(df):
 
     return df
 
-def replace_special_cases(df):
-    def __replace_special_cases(tweet):
-        special_words = [
-            ('instructress', 'instructor'),
-            ('nonproduction', 'production'),
-            ('pleasantness', 'pleasant'),
-            ('propellant', 'propel'),
-            ('signless', 'sign'),
-            ('sledder', 'sled'),
-            ('suborbital', 'orbital'),
-            ('wishless', 'wish'),
-        ]
-        for word, replacement in special_words:
-            tweet = re.sub(word, replacement, tweet)
-
-        return tweet
-
-    df['cleanText'] = df['cleanText'].apply(__replace_special_cases)
-
-    return df
-
 def remove_empty_tweets(df):
     df = df.drop(df[df['cleanText'] == ''].index)
 
@@ -124,7 +105,6 @@ def preprocess(df):
     df = lemmatize(df)
     df = remove_non_english_words(df)
     df = remove_english_stopwords(df)
-    df = replace_special_cases(df)
     df = remove_empty_tweets(df)
 
     return df

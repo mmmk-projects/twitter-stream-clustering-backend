@@ -15,11 +15,11 @@ import operator
 
 from .tweet_preprocessor import preprocess, stopwords
 
-max_data_size = 118
+max_data_size = 250
 
 class TwitterKMeans:
 
-    def __init__(self, model, n_clusters=8, fading=0.9, thresh=0.1, n_iterations=5):
+    def __init__(self, model, n_clusters=6, fading=0.9, thresh=0.1, n_iterations=5):
         self.__model = model
 
         self.__n_clusters = n_clusters
@@ -53,6 +53,7 @@ class TwitterKMeans:
         active = self.__tweets['ttl'] > self.__thresh
         X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
         labels = self.__tweets[active]['label'].values
+        print()
         print('Sillhouette score:', silhouette_score(X, labels))
         print('Calinzki-Harabaz score:', calinski_harabaz_score(X, labels))
         print('Davies-Bouldin score:', davies_bouldin_score(X, labels))
@@ -124,7 +125,6 @@ class TwitterKMeans:
             reduced_centroids = self.__pca.transform(reduced_centroids)
         
         clusters = []
-        max_size = max_data_size
         max_x, max_y = 0, 0
         for label in range(self.__n_clusters):
             centroid = centroids[label]
@@ -150,12 +150,12 @@ class TwitterKMeans:
             hashtags = [hashtag[0] for hashtag in
                         self.__model.similar_by_vector(cadidate_vector, topn=25)]
             noun_hashtags = [hashtag[0] for hashtag in pos_tag(hashtags) if hashtag[1][0] == 'N']
-            if len(noun_hashtags) > 1:
+            try:
                 hashtag = noun_hashtags[idx]
-                while hashtag not in stopwords or hashtag in [cluster['hashtag'] for cluster in clusters]:
+                while hashtag in stopwords or hashtag in [cluster['hashtag'] for cluster in clusters]:
                     idx += 1
                     hashtag = noun_hashtags[idx]
-            else:
+            except IndexError:
                 hashtag = hashtags[0]
 
             x, y = reduced_centroid[0], reduced_centroid[1]
@@ -164,23 +164,15 @@ class TwitterKMeans:
             if abs(y) > max_y:
                 max_y = abs(y)
             
-            size = len(documents)
-            if size > max_size:
-                max_size = size
-            
             clusters.append({
                 'id': float(label) + 1,
                 'hashtag': str(hashtag),
                 'x': float(x),
                 'y': float(y),
-                'size': float(size),
+                'size': float(len(documents)),
                 'documents': documents,
                 'wordCount': word_count
             })
-        if max_size > max_data_size:
-            scale_ratio = math.ceil(max_size / (max_data_size * 2.0 / 3.0))
-            for cluster in clusters:
-                cluster['size'] = math.ceil(cluster['size'] / scale_ratio)
         
         return clusters, max_x, max_y, self.__is_init
     
