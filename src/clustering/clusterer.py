@@ -178,6 +178,12 @@ class TwitterKMeans:
         return clusters, max_x, max_y, self.__is_init
     
     def __create_vector(self, tweet):
-        word_vectors = [self.__model[word] for word in tweet.split()]
+        def __w2v(word):
+            try:
+                return self.__model[word]
+            except KeyError:
+                return [0.0] * self.__model.vector_size
+
+        word_vectors = [__w2v(word) for word in tweet.split()]
 
         return np.mean(word_vectors, axis=0).tolist()
