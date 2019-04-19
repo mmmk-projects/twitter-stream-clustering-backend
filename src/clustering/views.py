@@ -16,7 +16,6 @@ def update_indices():
         to_idx = max_data_size
     else:
         from_idx += update_size
-    print(from_idx, to_idx)
 
 @csrf_exempt
 def get_clusters(request):

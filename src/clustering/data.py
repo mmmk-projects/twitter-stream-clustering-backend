@@ -12,7 +12,6 @@ documents = pd.read_csv('.{}scraped_tweets.csv'.format(settings.DATA_URL), dtype
               .reset_index()
 documents['cleanText'] = documents['text']
 documents.sort_values(by=['time'], inplace=True)
-print(len(documents.index))
 
 model = KeyedVectors.load('.{}gensim_w2v.kv'.format(settings.MODEL_URL))
 

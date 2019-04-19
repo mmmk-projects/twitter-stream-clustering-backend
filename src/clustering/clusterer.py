@@ -19,16 +19,17 @@ max_data_size = 250
 
 class TwitterKMeans:
 
-    def __init__(self, model, n_clusters=6, fading=0.9, thresh=0.1, n_iterations=5):
+    def __init__(self, model, n_clusters=6, fading=0.85, thresh=0.25):
         self.__model = model
 
         self.__n_clusters = n_clusters
         self.__fading = fading
         self.__thresh = thresh
-        self.__n_iterations = n_iterations
         self.__is_init = False
 
         self.__tweets = None
+
+        self.__clusterer = KMeans(n_clusters=self.__n_clusters)
         self.__centroids = None
 
         self.__pca = None
@@ -70,7 +71,7 @@ class TwitterKMeans:
         tweet_vectors = [self.__create_vector(tweet) for tweet in
                          self.__tweets[self.__tweets['ttl'] > self.__thresh]['cleanText'].values]
         
-        clustering = KMeans(n_clusters=self.__n_clusters).fit(tweet_vectors) 
+        clustering = self.__clusterer.fit(tweet_vectors) 
         self.__tweets['label'] = clustering.labels_
 
         self.__centroids = [centroid.tolist() for centroid in clustering.cluster_centers_]
