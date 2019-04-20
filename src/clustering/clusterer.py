@@ -155,7 +155,7 @@ class TwitterKMeans:
         return True
     
     def __try_merge(self):
-        if self.__davies_bouldin_score < self.__merge_factor:
+        if len(self.__centroids) <= 2 or self.__davies_bouldin_score < self.__merge_factor:
             return False
         
         closest_clusters = np.unravel_index(np.argmin(self.__distance_matrix, axis=None),
