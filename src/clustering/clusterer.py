@@ -18,10 +18,11 @@ import time
 from .tweet_preprocessor import preprocess, stopwords
 
 max_data_size = 250
+max_cluster_size = 125
 
 class TwitterKMeans:
 
-    def __init__(self, model, n_clusters=6, fading=0.85, thresh=0.25):
+    def __init__(self, model, n_clusters=5, fading=0.85, thresh=0.25):
         self.__model = model
 
         self.__n_clusters = n_clusters
@@ -36,6 +37,11 @@ class TwitterKMeans:
 
         self.__pca = None
         self.__scaler = StandardScaler()
+
+        self.__calinski_harabaz_score = None
+        self.__davies_bouldin_score = None
+        self.__silhouette_score = None
+        self.__silhouette_scores = None
     
     """""""""""""""""""""""""""
     Main clustering procedures
@@ -51,24 +57,22 @@ class TwitterKMeans:
             self.__init_clusters(tweets)
         else:
             self.__increment_clusters(tweets)
+        split_or_merge = False
+        self.__evalute_clusters()
 
         """""""""
         Evaluation
         """""""""
         print()
-        print('Clustering took {:.2f} seconds'.format(time.time() - start_time))
-        active = self.__tweets['ttl'] > self.__thresh
-        X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
-        labels = self.__tweets[active]['label'].values
-        print('Calinzki-Harabaz score:', calinski_harabaz_score(X, labels))
-        print('Davies-Bouldin score:', davies_bouldin_score(X, labels))
-        print('Silhouette score:', silhouette_score(X, labels))
-        silhouette_scores = silhouette_samples(X, labels)
+        print('Clustering took {:.3f} seconds'.format(time.time() - start_time))
+        if split_or_merge:
+            self.__evalute_clusters()
+        print('Calinzki-Harabaz score: {:.3f}'.format(self.__calinski_harabaz_score))
+        print('Davies-Bouldin score: {:.3f}'.format(self.__davies_bouldin_score))
+        print('Silhouette score: {:.3f}'.format(self.__silhouette_score))
         print('Silhouette score per cluster:')
-        for label in range(len(self.__centroids)):
-            score = np.mean([score for idx, score in enumerate(silhouette_scores)
-                             if label == labels[idx]])
-            print('Cluster {}: {}'.format(label + 1, score))
+        for label, score in enumerate(self.__silhouette_scores):
+            print('Cluster {}: {:.3f}'.format(label + 1, score))
 
         return self.__summarize(self.__centroids)
 
@@ -198,4 +202,18 @@ class TwitterKMeans:
         word_vectors = [__w2v(word) for word in tweet.split()]
 
         return np.mean(word_vectors, axis=0).tolist()
+    
+    def __evalute_clusters(self):
+        active = self.__tweets['ttl'] > self.__thresh
+        X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
+        labels = self.__tweets[active]['label'].values
+        self.__calinski_harabaz_score = calinski_harabaz_score(X, labels)
+        self.__davies_bouldin_score = davies_bouldin_score(X, labels)
+        self.__silhouette_score = silhouette_score(X, labels)
+        silhouette_scores = silhouette_samples(X, labels)
+        self.__silhouette_scores = []
+        for label in range(len(self.__centroids)):
+            score = np.mean([score for idx, score in enumerate(silhouette_scores)
+                             if label == labels[idx]])
+            self.__silhouette_scores.append(score)
     
