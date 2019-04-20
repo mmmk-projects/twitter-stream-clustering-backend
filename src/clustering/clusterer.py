@@ -2,6 +2,7 @@ from gensim.models import KeyedVectors
 from nltk.tag import pos_tag
 import numpy as np
 from scipy.spatial import KDTree
+from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import calinski_harabaz_score, davies_bouldin_score, \
@@ -13,6 +14,7 @@ from django.conf import settings
 from collections import Counter
 import math
 import operator
+import sys
 import time
 
 from .tweet_preprocessor import preprocess, stopwords
@@ -22,7 +24,7 @@ max_cluster_size = 125
 
 class TwitterKMeans:
 
-    def __init__(self, model, n_clusters=4, fading=0.85, active_thresh=0.25, split_factor=0.5):
+    def __init__(self, model, n_clusters=3, fading=0.85, active_thresh=0.25, split_factor=0.6):
         self.__model = model
 
         self.__n_clusters = n_clusters
@@ -43,6 +45,7 @@ class TwitterKMeans:
         self.__davies_bouldin_score = None
         self.__silhouette_score = None
         self.__silhouette_scores = None
+        self.__distance_matrix = None
     
     """""""""""""""""""""""""""
     Main clustering procedures
@@ -57,19 +60,15 @@ class TwitterKMeans:
         if self.__tweets is None or self.__centroids is None:
             self.__init_clusters(tweets)
         else:
+            self.__try_split()
             self.__increment_clusters(tweets)
-        split_or_merge = False
-        self.__evalute_clusters()
-        split_or_merge = split_or_merge or self.__try_split()
-        split_or_merge = split_or_merge or self.__try_merge()
 
         """""""""
         Evaluation
         """""""""
         print()
         print('Clustering took {:.3f} seconds'.format(time.time() - start_time))
-        if split_or_merge:
-            self.__evalute_clusters()
+        self.__evalute_clusters()
         print('Calinzki-Harabaz score: {:.3f}'.format(self.__calinski_harabaz_score))
         print('Davies-Bouldin score: {:.3f}'.format(self.__davies_bouldin_score))
         print('Silhouette score: {:.3f}'.format(self.__silhouette_score))
@@ -146,7 +145,7 @@ class TwitterKMeans:
         return True
     
     def __try_merge(self):
-        return False
+        pass
     
     """""""""""""""
     Helper methods
@@ -236,4 +235,6 @@ class TwitterKMeans:
             score = np.mean([score for idx, score in enumerate(silhouette_scores)
                              if label == labels[idx]])
             self.__silhouette_scores.append(score)
+        
+        self.__distance_matrix = squareform(pdist(self.__centroids))
     
