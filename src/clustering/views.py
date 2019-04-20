@@ -26,13 +26,12 @@ def get_clusters(request):
             docs = documents.iloc[from_idx:to_idx].copy()
             update_indices()
 
-        clusters, max_x, max_y, is_init = twitter_kmeans.cluster(docs)
+        clusters, max_x, max_y = twitter_kmeans.cluster(docs)
 
         return JsonResponse({
             'clusters': clusters,
             'maxX': float(max_x),
-            'maxY': float(max_y),
-            'isInit': is_init
+            'maxY': float(max_y)
         })
     else:
         return HttpResponse(status=405)
