@@ -5,8 +5,7 @@ from scipy.spatial import KDTree
 from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.metrics import calinski_harabaz_score, davies_bouldin_score, \
-                            silhouette_score, silhouette_samples
+from sklearn.metrics import davies_bouldin_score, silhouette_score, silhouette_samples
 from sklearn.preprocessing import StandardScaler
 
 from django.conf import settings
@@ -24,12 +23,14 @@ max_cluster_size = 125
 
 class TwitterKMeans:
 
-    def __init__(self, model, init_clusters=3, fading=0.85, active_thresh=0.25, sim_factor=0.5):
+    def __init__(self, model, init_clusters=3,
+                 fading=0.85, active_thresh=0.25, split_factor=0.6, merge_factor=1.05):
         self.__model = model
 
         self.__fading = fading
         self.__active_thresh = active_thresh
-        self.__sim_factor = sim_factor
+        self.__split_factor = split_factor
+        self.__merge_factor = merge_factor
 
         self.__tweets = None
 
@@ -59,7 +60,8 @@ class TwitterKMeans:
         if self.__tweets is None or self.__centroids is None:
             self.__init_clusters(tweets)
         else:
-            self.__try_split()
+            if not self.__try_split():
+                self.__try_merge()
             self.__increment_clusters(tweets)
 
         """""""""
@@ -68,7 +70,6 @@ class TwitterKMeans:
         print()
         print('Clustering took {:.3f} seconds'.format(time.time() - start_time))
         self.__evalute_clusters()
-        print('Calinzki-Harabaz score: {:.3f}'.format(self.__calinski_harabaz_score))
         print('Davies-Bouldin score: {:.3f}'.format(self.__davies_bouldin_score))
         print('Silhouette score: {:.3f}'.format(self.__silhouette_score))
         print('Silhouette score per cluster:')
@@ -133,7 +134,7 @@ class TwitterKMeans:
     
     def __try_split(self):
         labels_to_split = [label for label, score in enumerate(self.__silhouette_scores)
-                           if score < self.__silhouette_score * self.__sim_factor]
+                           if score < self.__silhouette_score * self.__split_factor]
         if len(labels_to_split) == 0:
             return False
         
@@ -154,7 +155,30 @@ class TwitterKMeans:
         return True
     
     def __try_merge(self):
-        pass
+        if self.__davies_bouldin_score < self.__merge_factor:
+            return False
+        
+        closest_clusters = np.unravel_index(np.argmin(self.__distance_matrix, axis=None),
+                                            self.__distance_matrix.shape)
+        label_1, label_2 = (closest_clusters[0], closest_clusters[1]) if closest_clusters[0] < closest_clusters[1] \
+                           else (closest_clusters[1], closest_clusters[0])
+
+        def __update(label):
+            if label == label_1 or label == label_2:
+                return label_1
+            elif label > label_2:
+                return label - 1
+            else:
+                return label
+
+        self.__tweets['label'] = self.__tweets['label'].apply(__update)
+
+        tweets = self.__tweets[(self.__tweets['label'] == label_1)
+                               & (self.__tweets['ttl'] > self.__active_thresh)]
+        tweet_vectors = [self.__create_vector(word) for word in tweets['cleanText'].values]
+
+        self.__centroids[label_1] = np.mean(tweet_vectors, axis=0).tolist()
+        self.__centroids = self.__centroids[:label_2] + self.__centroids[label_2 + 1:]
     
     """""""""""""""
     Helper methods
@@ -235,7 +259,6 @@ class TwitterKMeans:
         X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
         labels = self.__tweets[active]['label'].values
 
-        self.__calinski_harabaz_score = calinski_harabaz_score(X, labels)
         self.__davies_bouldin_score = davies_bouldin_score(X, labels)
         self.__silhouette_score = silhouette_score(X, labels)
         silhouette_scores = silhouette_samples(X, labels)
@@ -246,4 +269,5 @@ class TwitterKMeans:
             self.__silhouette_scores.append(score)
         
         self.__distance_matrix = squareform(pdist(self.__centroids))
+        self.__distance_matrix[self.__distance_matrix == 0.0] = sys.maxsize
     
