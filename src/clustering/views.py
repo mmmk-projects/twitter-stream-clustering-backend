@@ -5,7 +5,7 @@ from .clusterer import max_data_size
 from .data import documents, twitter_kmeans, update_size
 from .tweet_preprocessor import preprocess
 
-from_idx, to_idx = 0, 125
+from_idx, to_idx = 0, update_size
 
 def update_indices():
     global from_idx, to_idx

@@ -5,7 +5,7 @@ from django.conf import settings
 
 from .clusterer import TwitterKMeans
 
-update_size = 125
+update_size = 75
 
 documents = pd.read_csv('.{}scraped_tweets.csv'.format(settings.DATA_URL), dtype=object) \
               .dropna(subset=['text']) \
