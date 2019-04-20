@@ -12,6 +12,7 @@ from django.conf import settings
 from collections import Counter
 import math
 import operator
+import time
 
 from .tweet_preprocessor import preprocess, stopwords
 
@@ -39,6 +40,8 @@ class TwitterKMeans:
     Main clustering procedures
     """""""""""""""""""""""""""
     def cluster(self, tweets):
+        start_time = time.time()
+
         self.__init = False
 
         tweets = preprocess(tweets)
@@ -51,10 +54,11 @@ class TwitterKMeans:
         """""""""
         Evaluation
         """""""""
+        print()
+        print('Clustering took {:.2f} seconds'.format(time.time() - start_time))
         active = self.__tweets['ttl'] > self.__thresh
         X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
         labels = self.__tweets[active]['label'].values
-        print()
         print('Sillhouette score:', silhouette_score(X, labels))
         print('Calinzki-Harabaz score:', calinski_harabaz_score(X, labels))
         print('Davies-Bouldin score:', davies_bouldin_score(X, labels))
