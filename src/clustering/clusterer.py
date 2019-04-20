@@ -24,17 +24,16 @@ max_cluster_size = 125
 
 class TwitterKMeans:
 
-    def __init__(self, model, n_clusters=3, fading=0.85, active_thresh=0.25, split_factor=0.6):
+    def __init__(self, model, init_clusters=3, fading=0.85, active_thresh=0.25, sim_factor=0.5):
         self.__model = model
 
-        self.__n_clusters = n_clusters
         self.__fading = fading
         self.__active_thresh = active_thresh
-        self.__split_factor = split_factor
+        self.__sim_factor = sim_factor
 
         self.__tweets = None
 
-        self.__clusterer = KMeans(n_clusters=self.__n_clusters)
+        self.__clusterer = KMeans(n_clusters=init_clusters)
         self.__mini_clusterer = KMeans(n_clusters=2)
         self.__centroids = None
 
@@ -87,7 +86,17 @@ class TwitterKMeans:
         clustering = self.__clusterer.fit(tweet_vectors) 
         self.__tweets['label'] = clustering.labels_
 
-        self.__centroids = [centroid.tolist() for centroid in clustering.cluster_centers_]
+        new_centroids = []
+        for label in range(len(clustering.cluster_centers_)):
+            tweets = self.__tweets[(self.__tweets['label'] == label)
+                                   & (self.__tweets['ttl'] > self.__active_thresh)]
+            if len(tweets.index) > 0:
+                vectors = [self.__create_vector(tweet) for tweet in tweets['cleanText'].values]
+                centroid = np.mean(vectors, axis=0).tolist()
+
+                new_centroids.append(centroid)
+
+        self.__centroids = new_centroids
     
     def __increment_clusters(self, new_tweets):
         new_tweets['ttl'] = 1
@@ -124,7 +133,7 @@ class TwitterKMeans:
     
     def __try_split(self):
         labels_to_split = [label for label, score in enumerate(self.__silhouette_scores)
-                           if score < self.__silhouette_score * self.__split_factor]
+                           if score < self.__silhouette_score * self.__sim_factor]
         if len(labels_to_split) == 0:
             return False
         
