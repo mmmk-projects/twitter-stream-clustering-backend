@@ -4,7 +4,8 @@ import numpy as np
 from scipy.spatial import KDTree
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.metrics import calinski_harabaz_score, davies_bouldin_score, silhouette_score
+from sklearn.metrics import calinski_harabaz_score, davies_bouldin_score, \
+                            silhouette_score, silhouette_samples
 from sklearn.preprocessing import StandardScaler
 
 from django.conf import settings
@@ -59,9 +60,15 @@ class TwitterKMeans:
         active = self.__tweets['ttl'] > self.__thresh
         X = [self.__create_vector(tweet) for tweet in self.__tweets[active]['cleanText'].values]
         labels = self.__tweets[active]['label'].values
-        print('Sillhouette score:', silhouette_score(X, labels))
         print('Calinzki-Harabaz score:', calinski_harabaz_score(X, labels))
         print('Davies-Bouldin score:', davies_bouldin_score(X, labels))
+        print('Silhouette score:', silhouette_score(X, labels))
+        silhouette_scores = silhouette_samples(X, labels)
+        print('Silhouette score per cluster:')
+        for label in range(len(self.__centroids)):
+            score = np.mean([score for idx, score in enumerate(silhouette_scores)
+                             if label == labels[idx]])
+            print('Cluster {}: {}'.format(label + 1, score))
 
         return self.__summarize(self.__centroids)
 
@@ -191,3 +198,4 @@ class TwitterKMeans:
         word_vectors = [__w2v(word) for word in tweet.split()]
 
         return np.mean(word_vectors, axis=0).tolist()
+    
