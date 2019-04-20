@@ -104,7 +104,7 @@ class TwitterKMeans:
         self.__tweets = self.__tweets.append(new_tweets)
 
         new_centroids = []
-        for label in range(self.__n_clusters):
+        for label in range(len(self.__centroids)):
             tweets = self.__tweets[(self.__tweets['label'] == label)
                                    & (self.__tweets['ttl'] > self.__thresh)]
             if len(tweets.index) > 0:
@@ -112,7 +112,7 @@ class TwitterKMeans:
                 centroid = np.mean(vectors, axis=0).tolist()
 
                 new_centroids.append(centroid)
-        if len(new_centroids) < self.__n_clusters:
+        if len(new_centroids) < len(self.__centroids):
             self.__init_clusters(self.__tweets, init=False)
             return
 
@@ -131,7 +131,7 @@ class TwitterKMeans:
         
         clusters = []
         max_x, max_y = 0, 0
-        for label in range(self.__n_clusters):
+        for label in range(len(self.__centroids)):
             centroid = centroids[label]
             reduced_centroid = reduced_centroids[label]
 
