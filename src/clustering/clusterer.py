@@ -13,6 +13,7 @@ from django.conf import settings
 from collections import Counter
 import math
 import operator
+from statistics import mean
 import sys
 import time
 
@@ -225,7 +226,7 @@ class TwitterKMeans:
 
             initial_hashtag = [hashtag[0] for hashtag in
                                self.__model.similar_by_vector(np.array(centroid), topn=1)][0]
-            cadidate_vector = np.mean([self.__model[initial_hashtag], self.__model[most_frequents[0]]],
+            cadidate_vector = np.mean([self.__w2v(initial_hashtag), self.__w2v(most_frequents[0])],
                                       axis=0)
             idx = 0
             hashtags = [hashtag[0] for hashtag in
@@ -258,15 +259,16 @@ class TwitterKMeans:
         return clusters, max_x, max_y
     
     def __create_vector(self, tweet):
-        def __w2v(word):
-            try:
-                return self.__model[word]
-            except KeyError:
-                return [0.0] * self.__model.vector_size
 
-        word_vectors = [__w2v(word) for word in tweet.split()]
+        word_vectors = [self.__w2v(word) for word in tweet.split()]
 
         return np.mean(word_vectors, axis=0).tolist()
+
+    def __w2v(self, word):
+        try:
+            return self.__model[word]
+        except KeyError:
+            return [0.0] * self.__model.vector_size
     
     def __evalute_clusters(self):
         active = self.__tweets['ttl'] > self.__active_thresh
@@ -274,13 +276,13 @@ class TwitterKMeans:
         labels = self.__tweets[active]['label'].values
 
         self.__davies_bouldin_score = davies_bouldin_score(X, labels)
-        self.__silhouette_score = silhouette_score(X, labels)
         silhouette_scores = silhouette_samples(X, labels)
         self.__silhouette_scores = []
         for label in range(len(self.__centroids)):
             score = np.mean([score for idx, score in enumerate(silhouette_scores)
                              if label == labels[idx]])
             self.__silhouette_scores.append(score)
+        self.__silhouette_score = mean(self.__silhouette_scores)
         
         self.__distance_matrix = squareform(pdist(self.__centroids))
         self.__distance_matrix[self.__distance_matrix == 0.0] = sys.maxsize
