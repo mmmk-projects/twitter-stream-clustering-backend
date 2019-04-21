@@ -207,11 +207,11 @@ class TwitterKMeans:
             word_count = Counter([words for doc in documents for words in doc['cleanText'].split()])
             word_count = sorted(word_count.items(), key=lambda wc: wc[1], reverse=True)
             word_count = [{'word': word, 'count': count} for word, count in word_count]
-            most_frequent = word_count[0]['word']
+            most_frequents = [wc['word'] for wc in word_count[:3]]
 
             initial_hashtag = [hashtag[0] for hashtag in
                                self.__model.similar_by_vector(np.array(centroid), topn=1)][0]
-            cadidate_vector = np.mean([self.__model[initial_hashtag], self.__model[most_frequent]],
+            cadidate_vector = np.mean([self.__model[initial_hashtag], self.__model[most_frequents[0]]],
                                       axis=0)
             idx = 0
             hashtags = [hashtag[0] for hashtag in
@@ -219,7 +219,7 @@ class TwitterKMeans:
             noun_hashtags = [hashtag[0] for hashtag in pos_tag(hashtags) if hashtag[1][0] == 'N']
             try:
                 hashtag = noun_hashtags[idx]
-                while hashtag in stopwords or hashtag in [cluster['hashtag'] for cluster in clusters]:
+                while hashtag in stopwords or hashtag in [cluster['hashtags'][0] for cluster in clusters]:
                     idx += 1
                     hashtag = noun_hashtags[idx]
             except IndexError:
@@ -233,7 +233,7 @@ class TwitterKMeans:
             
             clusters.append({
                 'id': float(label) + 1,
-                'hashtag': str(hashtag),
+                'hashtags': [str(hashtag)] + most_frequents[1:],
                 'x': float(x),
                 'y': float(y),
                 'size': float(len(documents)),
