@@ -15,7 +15,6 @@ documents.sort_values(by=['time'], inplace=True)
 
 model = KeyedVectors.load('.{}gensim_w2v.kv'.format(settings.MODEL_URL))
 
-twitter_kmeans = TwitterKMeans(model)
 pca = None
 
 clustered_docs = {}

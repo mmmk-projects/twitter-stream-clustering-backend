@@ -24,13 +24,19 @@ max_cluster_size = 125
 class TwitterKMeans:
 
     def __init__(self, model, init_clusters=3,
-                 fading=0.85, active_thresh=0.25, split_factor=0.6, merge_factor=1.05):
+                 fading=0.85, active_thresh=0.25,
+                 min_silhouette=0.1, split_factor=0.575,
+                 merge_factor=1.125):
         self.__model = model
 
         self.__fading = fading
         self.__active_thresh = active_thresh
+        self.__min_silhouette = min_silhouette
         self.__split_factor = split_factor
         self.__merge_factor = merge_factor
+
+        self.__has_splitted = False
+        self.__has_merged = False
 
         self.__tweets = None
 
@@ -41,7 +47,6 @@ class TwitterKMeans:
         self.__pca = None
         self.__scaler = StandardScaler()
 
-        self.__calinski_harabaz_score = None
         self.__davies_bouldin_score = None
         self.__silhouette_score = None
         self.__silhouette_scores = None
@@ -60,8 +65,12 @@ class TwitterKMeans:
         if self.__tweets is None or self.__centroids is None:
             self.__init_clusters(tweets)
         else:
-            if not self.__try_split():
-                self.__try_merge()
+            if self.__has_splitted or self.__has_merged:
+                self.__has_splitted = self.__has_merged = False
+            else:
+                self.__has_splitted = self.__try_split()
+                if not self.__has_splitted:
+                    self.__has_merged = self.__try_merge()
             self.__increment_clusters(tweets)
 
         """""""""
@@ -134,7 +143,8 @@ class TwitterKMeans:
     
     def __try_split(self):
         labels_to_split = [label for label, score in enumerate(self.__silhouette_scores)
-                           if score < self.__silhouette_score * self.__split_factor]
+                           if score > self.__min_silhouette
+                           and score < self.__silhouette_score * self.__split_factor]
         if len(labels_to_split) == 0:
             return False
         
@@ -145,12 +155,16 @@ class TwitterKMeans:
 
             clustering = self.__mini_clusterer.fit(tweet_vectors)
             tweets['label'] = clustering.labels_
-            tweets['label'] = [label if lbl == 0 else len(self.__centroids)
+            tweets['label'] = [label if lbl == 0 else label + len(self.__centroids) - 1
                                for lbl in tweets['label'].values]
             self.__tweets.update(tweets)
 
             self.__centroids[label] = clustering.cluster_centers_[0].tolist()
-            self.__centroids.append(clustering.cluster_centers_[1].tolist())
+            for center in clustering.cluster_centers_[1:]:
+                self.__centroids.append(center.tolist())
+            
+            if len(self.__centroids) >= 8:
+                break
         
         return True
     
@@ -270,4 +284,3 @@ class TwitterKMeans:
         
         self.__distance_matrix = squareform(pdist(self.__centroids))
         self.__distance_matrix[self.__distance_matrix == 0.0] = sys.maxsize
-    
