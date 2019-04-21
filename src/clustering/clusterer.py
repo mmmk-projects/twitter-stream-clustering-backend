@@ -252,7 +252,7 @@ class TwitterKMeans:
                 'x': float(x),
                 'y': float(y),
                 'size': float(len(documents)),
-                'documents': documents,
+                'documents': documents[:30],
                 'wordCount': word_count
             })
         
