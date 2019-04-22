@@ -15,7 +15,7 @@ def update_indices():
     to_idx += update_size
     if to_idx > len(documents.index):
         from_idx = 0
-        to_idx = max_data_size
+        to_idx = update_size
 
         twitter_kmeans = TwitterKMeans(model)
     else:
