@@ -239,6 +239,9 @@ class TwitterKMeans:
                     hashtag = noun_hashtags[idx]
             except IndexError:
                 hashtag = hashtags[0]
+            
+            hashtag_list = [str(hashtag)] + (most_frequents[1:] if most_frequents[0] == str(hashtag)
+                                             else most_frequents[:2])
 
             x, y = reduced_centroid[0], reduced_centroid[1]
             if abs(x) > max_x:
@@ -248,7 +251,7 @@ class TwitterKMeans:
             
             clusters.append({
                 'id': float(label) + 1,
-                'hashtags': [str(hashtag)] + most_frequents[1:],
+                'hashtags': hashtag_list,
                 'x': float(x),
                 'y': float(y),
                 'size': float(len(documents)),
