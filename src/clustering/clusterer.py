@@ -24,7 +24,7 @@ max_cluster_size = 125
 
 class TwitterKMeans:
 
-    def __init__(self, model, init_clusters=3,
+    def __init__(self, model, init_clusters=5,
                  fading=0.85, active_thresh=0.25,
                  min_silhouette=0.1, split_factor=0.575,
                  merge_factor=1.125):
