@@ -1,9 +1,12 @@
 from gensim.models import KeyedVectors
+import numpy as np
 import pandas as pd
 
 from django.conf import settings
 
 from .clusterer import TwitterKMeans
+
+np.random.seed(1)
 
 update_size = 75
 
