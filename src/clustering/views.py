@@ -39,3 +39,16 @@ def get_clusters(request):
         })
     else:
         return HttpResponse(status=405)
+
+@csrf_exempt
+def reset(request):
+    global from_idx, to_idx, twitter_kmeans
+
+    if request.method == 'GET':
+        from_idx, to_idx = 0, update_size
+
+        twitter_kmeans = TwitterKMeans(model)
+
+        return HttpResponse(status=200)
+    else:
+        return HttpResponse(status=405)
